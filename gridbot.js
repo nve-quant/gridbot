@@ -10,19 +10,7 @@ import { Wallet } from '@project-serum/anchor';
 import axios from 'axios';
 import { promisify } from 'util';
 
-async function getTokens() {
-    try {
-        const response = await axios.get('https://token.jup.ag/strict');
-        const data = response.data;
-        const tokens = data.map(({ symbol, address, decimals }) => ({ symbol, address, decimals }));
-        await fs.writeFile('tokens.txt', JSON.stringify(tokens));        
-        console.log('Updated Token List');
-        console.log("");
-        return tokens;
-    } catch (error) {
-        console.error(error);
-    }
-}
+
 
 dotenv.config();
 //read keypair and decode to public and private keys.
@@ -73,24 +61,21 @@ let startTime = process.hrtime();
 //const usdcMintAddress = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");
 
 async function main() {
-    await getTokens();
-    const rl = readline.createInterface({
-        input: process.stdin,
-        output: process.stdout,
-    });
+    const selectedTokenA = 'BROKIE';
+    const selectedAddressA = '4neSyzJmcSWQF58DKHdo7FNzJDDKSgaaQqrzuSXS5U6g';
+    const selectedDecimalsA = 6;
 
-    
-    let tokens = JSON.parse(await fs.readFile('tokens.txt'));
-    const questionAsync = promisify(rl.question).bind(rl);
+    const selectedTokenB = 'SOL';
+    const selectedAddressB = 'So11111111111111111111111111111111111111112';
+    const selectedDecimalsB = 9;
 
-    let tokenAMintAddress = '';
-    let tokenBMintAddress = '';
-    let selectedTokenA = '';
-    let selectedAddressA = '';
-    let selectedDecimalsA = '';
-    let selectedTokenB = '';
-    let selectedAddressB = '';
-    let selectedDecimalsB = '';
+    console.log(`Selected Tokens: ${selectedTokenA} and ${selectedTokenB}`);
+    console.log(`Selected Addresses: ${selectedAddressA} and ${selectedAddressB}`);
+
+    let tokenAMintAddress = new PublicKey(selectedAddressA);
+    let tokenBMintAddress = new PublicKey(selectedAddressB);
+
+
     let devFeeA;
     let devFeeB;
     let solDevFee = "CebibGKKY8ZAnZrFo7q5U8Wr9BswAKg2qWbdog13vRMR";
@@ -103,56 +88,6 @@ async function main() {
     let validTokenB = false;
     let start = new Date();
     
-
-    while (!validTokenA) {
-        const answer = await questionAsync(`Please Enter The First Token Symbol (Case Sensitive):`);
-        const token = tokens.find((t) => t.symbol === answer);
-        if (token) {
-            console.log(`Selected Token: ${token.symbol}`);
-            console.log(`Token Address: ${token.address}`);
-            console.log(`Token Decimals: ${token.decimals}`);
-            console.log("");
-            const confirmAnswer = await questionAsync(`Is this the correct token? (Y/N):`);
-            if (confirmAnswer.toLowerCase() === 'y' || confirmAnswer.toLowerCase() === 'yes') {
-                validTokenA = true;
-                selectedTokenA = token.symbol;
-                selectedAddressA = token.address;
-                selectedDecimalsA = token.decimals;
-            }
-        } else {
-            console.log(`Token ${answer} not found. Please Try Again.`)
-        }
-    }
-
-    while (!validTokenB) {
-        const answer = await questionAsync(`Please Enter The Second Token Symbol (Case Sensitive):`);
-        const token = tokens.find((t) => t.symbol === answer);
-        if (token) {
-            console.log(`Selected Token: ${token.symbol}`);
-            console.log(`Token Address: ${token.address}`);
-            console.log(`Token Decimals: ${token.decimals}`);
-            console.log("");
-            const confirmAnswer = await questionAsync(`Is this the correct token? (Y/N):`);
-            if (confirmAnswer.toLowerCase() === 'y' || confirmAnswer.toLowerCase() === 'yes') {
-                if (selectedAddressA === token.address) {
-                    console.log(`Tokens cannot be the same. Please try again.`);
-                } else {
-                    validTokenB = true;
-                    selectedTokenB = token.symbol;
-                    selectedAddressB = token.address;
-                    selectedDecimalsB = token.decimals;
-                }
-            }
-        } else {
-            console.log(`Token ${answer} not found. Please Try Again.`)
-        }
-    }
-
-
-    console.log(`Selected Tokens: ${selectedTokenA} and ${selectedTokenB}`);
-    console.log(`Selected Addresses: ${selectedAddressA} and ${selectedAddressB}`);
-    tokenAMintAddress = new PublicKey( selectedAddressA );
-    tokenBMintAddress = new PublicKey( selectedAddressB );
 
     while (true) {
         const question = [            
@@ -290,18 +225,20 @@ let percentageChange;
 let tokenAStart;
 
 async function refresh(selectedTokenA, selectedTokenB, start, selectedAddressA, selectedAddressB, wallet, tokenAMintAddress, tokenBMintAddress, selectedDecimalsA, selectedDecimalsB, devFee, devFeeA, devFeeB, currentPrice) { 
-    const response = await fetch(
-        `https://price.jup.ag/v4/price?ids=${selectedTokenA}&vsToken=${selectedTokenB}`
-    );
+    const apiUrl = `https://price.jup.ag/v4/price?ids=${selectedAddressA}&vsToken=${selectedAddressB}`;
+console.log("API URL:", apiUrl);
+const response = await fetch(apiUrl);
     if (response.ok) {
         const data = await response.json();
-        if (data.data[selectedTokenA]) {
+        console.log("Response Data:", data);
+        
+        if (data.data[selectedAddressA]) {
+            // Token exists in the response data, proceed with calculations
             const tokens = new Tokens(
-                data.data[selectedTokenA].mintSymbol,
-                data.data[selectedTokenA].vsTokenSymbol,
-                data.data[selectedTokenA].price
+                data.data[selectedAddressA].mintSymbol,
+                data.data[selectedAddressA].vsTokenSymbol,
+                data.data[selectedAddressA].price
             );
-
             const priceData = new PriceData(tokens);
             const priceResponse = new PriceResponse(priceData, data.timeTaken);
             const endTime = new Date();
@@ -389,9 +326,9 @@ async function refresh(selectedTokenA, selectedTokenB, start, selectedAddressA, 
                             console.error(error);
                         });
 
-                    accountBalUSDStart = ((tokenABalanceStart.toFixed(selectedDecimalsA) * usdCalcStartA) + (tokenBBalanceStart.toFixed(selectedDecimalsB) * usdCalcStartB));
+                   
                 };
-
+                accountBalUSDStart = ((tokenABalanceStart.toFixed(selectedDecimalsA) * usdCalcStartA) + (tokenBBalanceStart.toFixed(selectedDecimalsB) * usdCalcStartB));
                 gridCalc = false;
             }
 
@@ -425,23 +362,40 @@ async function refresh(selectedTokenA, selectedTokenB, start, selectedAddressA, 
             //get USD price for each asset
             //TO DO
             await fetch(`https://price.jup.ag/v4/price?ids=${selectedTokenA}`)
-                .then(response => response.json())
-                .then(data => {
+            .then(response => {
+                console.log(`Fetching price for ${selectedTokenA}`);
+                console.log(`URL: https://price.jup.ag/v4/price?ids=${selectedTokenA}`);
+                return response.json();
+            })
+            .then(data => {
+                if (data.data[selectedTokenA]) {
                     usdCalcNowA = data.data[selectedTokenA].price;
-                })
-                .catch(error => {
-                    // handle errors
-                    console.error(error);
-                });
-            await fetch(`https://price.jup.ag/v4/price?ids=${selectedTokenB}`)
-                .then(response => response.json())
-                .then(data => {
+                    console.log(`Price of ${selectedTokenA}: ${usdCalcNowA}`);
+                } else {
+                    console.log(`Price data not found for ${selectedTokenA}`);
+                }
+            })
+            .catch(error => {
+                console.error(`Error fetching price for ${selectedTokenA}:`, error);
+            });
+        
+        await fetch(`https://price.jup.ag/v4/price?ids=${selectedTokenB}`)
+            .then(response => {
+                console.log(`Fetching price for ${selectedTokenB}`);
+                console.log(`URL: https://price.jup.ag/v4/price?ids=${selectedTokenB}`);
+                return response.json();
+            })
+            .then(data => {
+                if (data.data[selectedTokenB]) {
                     usdCalcNowB = data.data[selectedTokenB].price;
-                })
-                .catch(error => {
-                    // handle errors
-                    console.error(error);
-                });
+                    console.log(`Price of ${selectedTokenB}: ${usdCalcNowB}`);
+                } else {
+                    console.log(`Price data not found for ${selectedTokenB}`);
+                }
+            })
+            .catch(error => {
+                console.error(`Error fetching price for ${selectedTokenB}:`, error);
+            });
 
             userPercentageChange = ((accountBalUSDCurrent - accountBalUSDStart) / accountBalUSDStart) * 100;
             percentageChange = ((usdCalcNowA - usdCalcStartA) / usdCalcStartA) * 100; 
@@ -479,23 +433,6 @@ async function refresh(selectedTokenA, selectedTokenB, start, selectedAddressA, 
                 spreadUp = spreadUp - spreadIncrement;
                 spreadDown = spreadDown - spreadIncrement;
             }
-
-            /* ---- Do not uncomment this block. Used for forcing transactions, and causes a memory leak.
-            const force = readline.createInterface({
-                input: process.stdin,
-                output: process.stdout
-            });
-            force.on('line', async function (input) {
-                if (input === 's') {
-                    console.log('Sell order triggered manually');
-                    await makeSellTransaction(selectedAddressA, selectedAddressB, slipTarget, selectedDecimalsA, devFeeB, devFee, fixedSwapVal);
-                }
-                if (input === 'b') {
-                    console.log('Buy order triggered manually');
-                    await makeBuyTransaction(selectedAddressA, selectedAddressB, slipTarget, selectedDecimalsB, devFeeA, devFee, fixedSwapVal, currentPrice);
-                }
-            });
-            */
 
             console.log(chalk.red(`Spread Up: ${spreadUp.toFixed(selectedDecimalsA)}`, "-- Sell"));
             console.log(`Price: ${priceResponse.data.selectedTokenA.price.toFixed(selectedDecimalsA)}`);

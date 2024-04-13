@@ -19,6 +19,7 @@
     "bs58": "^5.0.0",
     "csv-parser": "^3.0.0",
     "dotenv": "^16.0.3",
+    "external-editor": "^3.1.0",
     "fs": "^0.0.1-security",
     "inquirer": "^9.1.5",
     "jsbi": "^4.3.0",
