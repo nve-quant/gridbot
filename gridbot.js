@@ -306,20 +306,20 @@ const response = await fetch(apiUrl);
                         console.log(chalk.red(`No token accounts found for ${selectedTokenB} in wallet ${wallet.publicKey}`));
                         process.exit(1);
                     }
-                    await fetch(`https://price.jup.ag/v4/price?ids=${selectedTokenA}`)
+                    await fetch(`https://price.jup.ag/v4/price?ids=${selectedAddressA}`)
                         .then(response => response.json())
                         .then(data => {
-                            usdCalcStartA = data.data[selectedTokenA].price;
+                            usdCalcStartA = data.data[selectedAddressA].price;
                         })
                         .catch(error => {
                             // handle errors
                             console.error(error);
                         });
 
-                    await fetch(`https://price.jup.ag/v4/price?ids=${selectedTokenB}`)
+                    await fetch(`https://price.jup.ag/v4/price?ids=${selectedAddressB}`)
                         .then(response => response.json())
                         .then(data => {
-                            usdCalcStartB = data.data[selectedTokenB].price;
+                            usdCalcStartB = data.data[selectedAddressB].price;
                         })
                         .catch(error => {
                             // handle errors
@@ -361,15 +361,15 @@ const response = await fetch(apiUrl);
             }
             //get USD price for each asset
             //TO DO
-            await fetch(`https://price.jup.ag/v4/price?ids=${selectedTokenA}`)
+            await fetch(`https://price.jup.ag/v4/price?ids=${selectedAddressA}`)
             .then(response => {
                 console.log(`Fetching price for ${selectedTokenA}`);
-                console.log(`URL: https://price.jup.ag/v4/price?ids=${selectedTokenA}`);
+                console.log(`URL: https://price.jup.ag/v4/price?ids=${selectedAddressA}`);
                 return response.json();
             })
             .then(data => {
-                if (data.data[selectedTokenA]) {
-                    usdCalcNowA = data.data[selectedTokenA].price;
+                if (data.data[selectedAddressA]) {
+                    usdCalcNowA = data.data[selectedAddressA].price;
                     console.log(`Price of ${selectedTokenA}: ${usdCalcNowA}`);
                 } else {
                     console.log(`Price data not found for ${selectedTokenA}`);
@@ -379,15 +379,15 @@ const response = await fetch(apiUrl);
                 console.error(`Error fetching price for ${selectedTokenA}:`, error);
             });
         
-        await fetch(`https://price.jup.ag/v4/price?ids=${selectedTokenB}`)
+        await fetch(`https://price.jup.ag/v4/price?ids=${selectedAddressB}`)
             .then(response => {
                 console.log(`Fetching price for ${selectedTokenB}`);
                 console.log(`URL: https://price.jup.ag/v4/price?ids=${selectedTokenB}`);
                 return response.json();
             })
             .then(data => {
-                if (data.data[selectedTokenB]) {
-                    usdCalcNowB = data.data[selectedTokenB].price;
+                if (data.data[selectedAddressB]) {
+                    usdCalcNowB = data.data[selectedAddressB].price;
                     console.log(`Price of ${selectedTokenB}: ${usdCalcNowB}`);
                 } else {
                     console.log(`Price data not found for ${selectedTokenB}`);
@@ -434,11 +434,11 @@ const response = await fetch(apiUrl);
                 spreadDown = spreadDown - spreadIncrement;
             }
 
-            console.log(chalk.red(`Spread Up: ${spreadUp.toFixed(selectedDecimalsA)}`, "-- Sell"));
-            console.log(`Price: ${priceResponse.data.selectedTokenA.price.toFixed(selectedDecimalsA)}`);
-            console.log(chalk.green(`Spread Down: ${spreadDown.toFixed(selectedDecimalsA)}`, "-- Buy"));
+            console.log(chalk.red(`Spread Up: ${spreadUp.toFixed(10)}`, "-- Sell"));
+            console.log(`Price: ${priceResponse.data.selectedTokenA.price.toFixed(10)}`);
+            console.log(chalk.green(`Spread Down: ${spreadDown.toFixed(10)}`, "-- Buy"));
             console.log("");
-            lastPrice = priceResponse.data.selectedTokenA.price.toFixed(selectedDecimalsA);
+            lastPrice = priceResponse.data.selectedTokenA.price.toFixed(10);
         } else {
             console.log(`Token ${selectedTokenA} not found`);
             selectedTokenB = null;
@@ -451,119 +451,129 @@ const response = await fetch(apiUrl);
 
 async function makeSellTransaction(selectedAddressA, selectedAddressB, slipTarget, selectedDecimalsA, devFeeB, devFee, fixedSwapVal) {
     try {
-        //console.log(selectedDecimalsA);
         var tokenALamports = Math.floor(fixedSwapVal * (10 ** selectedDecimalsA));
-        //console.log(tokenALamports);
-        //var fixedSwapValLamports = fixedSwapVal * 1000000000;
         var slipBPS = Math.floor(slipTarget * 100);
-        //console.log(slipBPS);
 
-        let data = null;
+        let url = '';
         if (devFee != 0 && devFeeB != "None") {
-            const response = await fetch('https://quote-api.jup.ag/v4/quote?inputMint=' + selectedAddressA + '&outputMint=' + selectedAddressB + '&amount=' + tokenALamports + '&slippageBps=' + slipBPS + '&feeBps=');
-            //console.log(response);
-            const jsonData = await response.json();
-            data = jsonData.data;
+            url = 'https://quote-api.jup.ag/v6/quote?inputMint=' + selectedAddressA + '&outputMint=' + selectedAddressB + '&amount=' + tokenALamports + '&slippageBps=' + slipBPS + '&feeBps=';
         } else {
-            const response = await fetch('https://quote-api.jup.ag/v4/quote?inputMint=' + selectedAddressA + '&outputMint=' + selectedAddressB + '&amount=' + tokenALamports + '&slippageBps=' + slipBPS);
-            //console.log(response);
-            const jsonData = await response.json();
-            data = jsonData.data;
+            url = 'https://quote-api.jup.ag/v6/quote?inputMint=' + selectedAddressA + '&outputMint=' + selectedAddressB + '&amount=' + tokenALamports + '&slippageBps=' + slipBPS;
         }
-        //console.log(data);
-        const routes = data;
+        console.log(url);
 
-        const transactions = await (
-            await fetch('https://quote-api.jup.ag/v4/swap', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    // route from /quote api
-                    route: routes[0],
-                    // user public key to be used for the swap
-                    userPublicKey: wallet.publicKey.toString(),
-                    wrapUnwrapSOL: true,
-                    feeAccount: devFeeB
-                })
-            })
-        ).json();
-        const { swapTransaction } = transactions;
-        // deserialize the transaction
-        const swapTransactionBuf = Buffer.from(swapTransaction, 'base64');
-        var transaction = VersionedTransaction.deserialize(swapTransactionBuf);
-        console.log("Making Sell Order!")
-        // sign the transaction
-        transaction.sign([wallet.payer]);
-        // Execute the transaction
-        const rawTransaction = transaction.serialize()
-        const txid = await connection.sendRawTransaction(rawTransaction, {
-            skipPreflight: false,
-            maxRetries: 5
-        });
-        await connection.confirmTransaction(txid);
-        console.log(`https://solscan.io/tx/${txid}`);
-        sellOrders++;
-    }
-    catch (error) {
-        console.error(`Transaction error: ${error.message}`)
-    }
+        const requestBody = {
+            userPublicKey: wallet.publicKey.toString(),
+            quoteResponse: jsonData
+          };
+      
+          console.log('Request body sent to /swap endpoint:', requestBody);
+      
+          // Get serialized transactions for the swap
+          const response = await axios.post('https://quote-api.jup.ag/v6/swap', requestBody, {
+            headers: {
+              'Content-Type': 'application/json',
+            }
+          });
+      
+          const { swapTransaction } = response.data;
+      
+          console.log('Swap transaction:', swapTransaction);
+      
+          // Deserialize the transaction
+          const swapTransactionBuf = Buffer.from(swapTransaction, 'base64');
+          var transaction = VersionedTransaction.deserialize(swapTransactionBuf);
+      
+          console.log("Making Sell Order!");
+          console.log(transaction);
+      
+          // Sign the transaction
+          transaction.sign([wallet.payer]);
+      
+          // Execute the transaction
+          const rawTransaction = transaction.serialize();
+          const txid = await connection.sendRawTransaction(rawTransaction, {
+            skipPreflight: true,
+            maxRetries: 2
+          });
+      
+          await connection.confirmTransaction(txid);
+      
+          console.log(`https://solscan.io/tx/${txid}`);
+          sellOrders++;
+        } catch (error) {
+          console.error('Transaction error:', error.message);
+          console.error('Full error object:', error);
+        }
 };
 
 async function makeBuyTransaction(selectedAddressA, selectedAddressB, slipTarget, selectedDecimalsB, devFeeA, devFee, fixedSwapVal, currentPrice) {
     try {
-        var tokenBLamports = Math.floor(fixedSwapVal * currentPrice * (10 ** selectedDecimalsB))        
+        var tokenBLamports = Math.floor(fixedSwapVal * currentPrice * (10 ** selectedDecimalsB));
         var slipBPS = Math.floor(slipTarget * 100);
-        let data = null;
-        if (devFee != 0 && devFeeA != "None") {
-            const response = await fetch('https://quote-api.jup.ag/v4/quote?inputMint=' + selectedAddressB + '&outputMint=' + selectedAddressA + '&amount=' + tokenBLamports + '&slippageBps=' + slipBPS + '&feeBps=' + devFee);
-            
-            const jsonData = await response.json();
-            data = jsonData.data;
-        } else {
-            const response = await fetch('https://quote-api.jup.ag/v4/quote?inputMint=' + selectedAddressB + '&outputMint=' + selectedAddressA + '&amount=' + tokenBLamports + '&slippageBps=' + slipBPS);
-            
-            const jsonData = await response.json();
-            data = jsonData.data;
-        }        
-        const routes = data;
-        // get serialized transactions for the swap
-        const transactions = await (
-            await fetch('https://quote-api.jup.ag/v4/swap', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    // route from /quote api
-                    route: routes[0],
-                    // user public key to be used for the swap
-                    userPublicKey: wallet.publicKey.toString(),
-                    wrapUnwrapSOL: true,
-                    feeAccount: devFeeA
-                })
-            })
-        ).json();
 
-        const { swapTransaction } = transactions;
-        // deserialize the transaction
-        const swapTransactionBuf = Buffer.from(swapTransaction, 'base64');
-        var transaction = VersionedTransaction.deserialize(swapTransactionBuf);
-        console.log("Making Buy Order!");
-        // sign the transaction
-        transaction.sign([wallet.payer]);
-        // Execute the transaction
-        const rawTransaction = transaction.serialize()
-        const txid = await connection.sendRawTransaction(rawTransaction, {
-            skipPreflight: false,
-            maxRetries: 5
-        });
-        await connection.confirmTransaction(txid);
-        console.log(`https://solscan.io/tx/${txid}`);
-        buyOrders++;
-    } catch (error) {
-        console.error(`Transaction error: ${error.message}`)
-    }
-};
+        let url = '';
+        if (devFee != 0 && devFeeA != "None") {
+            url = 'https://quote-api.jup.ag/v6/quote?inputMint=' + selectedAddressB + '&outputMint=' + selectedAddressA + '&amount=' + tokenBLamports + '&slippageBps=' + slipBPS + '&feeBps=' + devFee;
+        } else {
+            url = 'https://quote-api.jup.ag/v6/quote?inputMint=' + selectedAddressB + '&outputMint=' + selectedAddressA + '&amount=' + tokenBLamports + '&slippageBps=' + slipBPS;
+        }
+        console.log(url);
+
+        const response = await axios.get(url, {
+            headers: {
+              'Accept': 'application/json'
+            }
+          });
+          const jsonData = response.data;
+      
+          if (!jsonData || !jsonData.routePlan || jsonData.routePlan.length === 0) {
+            console.error('No routes found in the API response');
+            return;
+          }
+      
+          const requestBody = {
+            userPublicKey: wallet.publicKey.toString(),
+            quoteResponse: jsonData
+          };
+      
+          console.log('Request body sent to /swap endpoint:', requestBody);
+      
+          // Get serialized transactions for the swap
+          const swapResponse = await axios.post('https://quote-api.jup.ag/v6/swap', requestBody, {
+            headers: {
+              'Content-Type': 'application/json',
+            }
+          });
+      
+          const { swapTransaction } = swapResponse.data;
+      
+          console.log('Swap transaction:', swapTransaction);
+      
+          // Deserialize the transaction
+          const swapTransactionBuf = Buffer.from(swapTransaction, 'base64');
+          var transaction = VersionedTransaction.deserialize(swapTransactionBuf);
+      
+          console.log("Making Buy Order!");
+          console.log(transaction);
+      
+          // Sign the transaction
+          transaction.sign([wallet.payer]);
+      
+          // Execute the transaction
+          const rawTransaction = transaction.serialize();
+          const txid = await connection.sendRawTransaction(rawTransaction, {
+            skipPreflight: true,
+            maxRetries: 2
+          });
+      
+          await connection.confirmTransaction(txid);
+      
+          console.log(`https://solscan.io/tx/${txid}`);
+          buyOrders++;
+        } catch (error) {
+          console.error('Transaction error:', error.message);
+          console.error('Full error object:', error);
+        }
+    };
 main();
